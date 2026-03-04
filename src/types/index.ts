@@ -1,7 +1,8 @@
 // ===== Core User Types =====
 export interface User {
   uid: string
-  phone: string
+  phone?: string       // optional — only set when using phone auth
+  email?: string       // set when using email/password auth
   name?: string
   avatar?: string
   createdAt: Date

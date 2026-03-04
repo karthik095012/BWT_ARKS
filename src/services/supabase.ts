@@ -204,34 +204,54 @@ export async function incrementReportCount(id: string): Promise<void> {
 
 // ─── Auth ─────────────────────────────────────────────────────────────────
 
-/** Demo mode: true when Supabase is not configured → no real SMS sent */
+/** Demo mode: true when Supabase is not configured */
 export const isSupabaseDemoMode = !isSupabaseConfigured
 
-/**
- * Send phone OTP via Supabase Auth (Phone provider must be enabled in dashboard).
- * Phone must be E.164 format: "+91XXXXXXXXXX"
- */
+// ── Phone OTP (kept for backward compat) ──────────────────────────────
 export async function sendPhoneOTP(phoneE164: string): Promise<void> {
-  if (!supabase || isSupabaseDemoMode) return // demo: skip real SMS
+  if (!supabase || isSupabaseDemoMode) return
   const { error } = await supabase.auth.signInWithOtp({ phone: phoneE164 })
   if (error) throw error
 }
 
-/**
- * Verify the 6-digit OTP. Returns the user's UID on success.
- */
 export async function verifyPhoneOTP(phoneE164: string, otp: string): Promise<string> {
   if (!supabase || isSupabaseDemoMode) {
     if (otp !== '123456') throw new Error('Invalid OTP. Use 123456 for demo.')
     return `demo_${Date.now()}`
   }
   const { data, error } = await supabase.auth.verifyOtp({
-    phone: phoneE164,
-    token: otp,
-    type: 'sms',
+    phone: phoneE164, token: otp, type: 'sms',
   })
   if (error) throw error
   return data.user?.id ?? `uid_${Date.now()}`
+}
+
+// ── Email + Password Auth (primary) ───────────────────────────────
+
+/** Sign up with email + password. Returns the user's UID. */
+export async function signUpWithEmail(email: string, password: string): Promise<string> {
+  if (!supabase) throw new Error('Supabase not configured')
+  const { data, error } = await supabase.auth.signUp({ email, password })
+  if (error) throw error
+  if (!data.user) throw new Error('Sign up failed — no user returned')
+  return data.user.id
+}
+
+/** Sign in with email + password. Returns the user's UID. */
+export async function signInWithEmail(email: string, password: string): Promise<string> {
+  if (!supabase) {
+    // demo fallback
+    if (email === 'demo@crediq.in' && password === 'demo123') return `demo_${Date.now()}`
+    throw new Error('Invalid credentials. Use demo@crediq.in / demo123')
+  }
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+  if (error) throw error
+  return data.user.id
+}
+
+/** Sign out the current session. */
+export async function signOut(): Promise<void> {
+  await supabase?.auth.signOut()
 }
 
 // ─── User DB helpers ──────────────────────────────────────────────────────

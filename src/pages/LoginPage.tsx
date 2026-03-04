@@ -3,97 +3,91 @@ import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { TrendingUp, Phone, Shield, Zap, ArrowRight, Bot, Lock } from 'lucide-react'
+import { TrendingUp, Mail, Lock, Shield, Zap, ArrowRight, Bot, Eye, EyeOff } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
-import {
-  sendPhoneOTP,
-  verifyPhoneOTP,
-  isSupabaseDemoMode,
-  saveUser,
-} from '@/services/supabase'
+import { signInWithEmail, signUpWithEmail, saveUser, isSupabaseConfigured } from '@/services/supabase'
 import toast from 'react-hot-toast'
 import type { User } from '@/types'
 
-const phoneSchema = z.object({
-  phone: z
-    .string()
-    .min(10, 'Enter a valid 10-digit mobile number')
-    .max(13)
-    .regex(/^(\+91)?[6-9]\d{9}$/, 'Enter a valid Indian mobile number'),
-})
-const otpSchema = z.object({
-  otp: z.string().length(6, 'OTP must be 6 digits'),
+const loginSchema = z.object({
+  email: z.string().email('Enter a valid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
 })
 
-type PhoneForm = z.infer<typeof phoneSchema>
-type OTPForm = z.infer<typeof otpSchema>
+const signupSchema = z.object({
+  email: z.string().email('Enter a valid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  confirmPassword: z.string().min(6, 'Confirm your password'),
+}).refine((d) => d.password === d.confirmPassword, {
+  message: 'Passwords do not match',
+  path: ['confirmPassword'],
+})
+
+type LoginForm = z.infer<typeof loginSchema>
+type SignupForm = z.infer<typeof signupSchema>
 
 export default function LoginPage() {
-  const [step, setStep] = useState<'phone' | 'otp'>('phone')
-  const [phone, setPhone] = useState('')
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [isLoading, setIsLoading] = useState(false)
+  const [showPw, setShowPw] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
   const { setUser } = useAppStore()
   const navigate = useNavigate()
 
-  const phoneForm = useForm<PhoneForm>({ resolver: zodResolver(phoneSchema) })
-  const otpForm = useForm<OTPForm>({ resolver: zodResolver(otpSchema) })
+  const loginForm = useForm<LoginForm>({ resolver: zodResolver(loginSchema) })
+  const signupForm = useForm<SignupForm>({ resolver: zodResolver(signupSchema) })
 
-  // Normalise to E.164 (+91XXXXXXXXXX)
-  const toE164 = (raw: string) =>
-    raw.startsWith('+91') ? raw : `+91${raw.replace(/\D/g, '').slice(-10)}`
-
-  const handleSendOTP = async (data: PhoneForm) => {
+  const handleSignIn = async (data: LoginForm) => {
     setIsLoading(true)
-    const e164 = toE164(data.phone)
-    setPhone(e164)
-
-    if (isSupabaseDemoMode) {
-      // ── Demo mode: no real SMS ──────────────────────────────
-      await new Promise((r) => setTimeout(r, 1000))
-      toast.success(`OTP sent to ${e164}  (Demo — use 123456)`)
-    } else {
-      // Real Supabase Phone Auth
-      try {
-        await sendPhoneOTP(e164)
-        toast.success(`OTP sent to ${e164}`)
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Failed to send OTP'
-        toast.error(msg)
-        setIsLoading(false)
-        return
+    try {
+      const uid = await signInWithEmail(data.email, data.password)
+      const user: User = {
+        uid,
+        email: data.email,
+        name: data.email.split('@')[0],
+        createdAt: new Date(),
+        lastLogin: new Date(),
       }
+      await saveUser(uid, { email: data.email, last_login: new Date().toISOString() })
+      setUser(user)
+      toast.success('Welcome back to CredIQ!')
+      navigate('/dashboard')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Sign in failed'
+      toast.error(msg)
+    } finally {
+      setIsLoading(false)
     }
-
-    setStep('otp')
-    setIsLoading(false)
   }
 
-  const handleVerifyOTP = async (data: OTPForm) => {
+  const handleSignUp = async (data: SignupForm) => {
     setIsLoading(true)
-    let uid: string
-
     try {
-      uid = await verifyPhoneOTP(phone, data.otp)
-    } catch {
-      otpForm.setError('otp', {
-        message: isSupabaseDemoMode ? 'Invalid OTP. Use 123456 for demo.' : 'Invalid OTP. Please try again.',
-      })
+      const uid = await signUpWithEmail(data.email, data.password)
+      const user: User = {
+        uid,
+        email: data.email,
+        name: data.email.split('@')[0],
+        createdAt: new Date(),
+        lastLogin: new Date(),
+      }
+      await saveUser(uid, { email: data.email, last_login: new Date().toISOString() })
+      setUser(user)
+      toast.success('Account created! Welcome to CredIQ.')
+      navigate('/dashboard')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Sign up failed'
+      // Supabase returns "User already registered" for duplicate emails
+      if (msg.toLowerCase().includes('already registered') || msg.toLowerCase().includes('already exists')) {
+        toast.error('Email already registered. Please sign in instead.')
+        setMode('signin')
+        loginForm.setValue('email', data.email)
+      } else {
+        toast.error(msg)
+      }
+    } finally {
       setIsLoading(false)
-      return
     }
-
-    const user: User = {
-      uid,
-      phone,
-      name: 'Karthik R Nair',
-      createdAt: new Date(),
-      lastLogin: new Date(),
-    }
-    await saveUser(uid, { phone, last_login: new Date().toISOString() })
-    setUser(user)
-    toast.success('Welcome to CredIQ!')
-    navigate('/dashboard')
-    setIsLoading(false)
   }
 
   return (
@@ -122,9 +116,9 @@ export default function LoginPage() {
 
           <div className="space-y-4">
             {[
-              { icon: Bot, text: 'Powered by Qwen2.5-Coder:14B running locally' },
-              { icon: Shield, text: 'Zero data sent to cloud — complete privacy' },
-              { icon: Zap, text: 'Credit score in &lt;30 seconds from UPI history' },
+              { icon: Bot,    text: 'Powered by Qwen2.5-Coder:14B running locally' },
+              { icon: Shield, text: 'Zero data sent to cloud &mdash; complete privacy' },
+              { icon: Zap,    text: 'Credit score in &lt;30 seconds from UPI history' },
             ].map(({ icon: Icon, text }) => (
               <div key={text} className="flex items-center gap-3 text-blue-100">
                 <Icon className="w-5 h-5 text-blue-300 shrink-0" />
@@ -154,97 +148,211 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div className="mb-8">
+          {/* Mode toggle */}
+          <div className="flex rounded-xl border border-neutral-200 bg-neutral-100 p-1 mb-8">
+            <button
+              type="button"
+              onClick={() => setMode('signin')}
+              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+                mode === 'signin'
+                  ? 'bg-white text-neutral-dark shadow-sm'
+                  : 'text-neutral-gray hover:text-neutral-dark'
+              }`}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('signup')}
+              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+                mode === 'signup'
+                  ? 'bg-white text-neutral-dark shadow-sm'
+                  : 'text-neutral-gray hover:text-neutral-dark'
+              }`}
+            >
+              Sign Up
+            </button>
+          </div>
+
+          <div className="mb-6">
             <h2 className="text-2xl font-bold text-neutral-dark mb-1">
-              {step === 'phone' ? 'Get Started' : 'Verify OTP'}
+              {mode === 'signin' ? 'Welcome Back' : 'Create Account'}
             </h2>
             <p className="text-neutral-gray text-sm">
-              {step === 'phone'
-                ? 'Enter your mobile number to continue'
-                : `We sent a 6-digit OTP to ${phone}`}
+              {mode === 'signin'
+                ? 'Sign in to your CredIQ account'
+                : 'Join CredIQ to unlock your financial identity'}
             </p>
           </div>
 
-          {step === 'phone' ? (
-            <form onSubmit={phoneForm.handleSubmit(handleSendOTP)} className="space-y-4">
+          {!isSupabaseConfigured && (
+            <div className="mb-4 p-3 rounded-lg bg-warning/10 border border-warning/30 text-xs text-warning font-medium">
+              ⚠️ Demo mode — use <strong>demo@crediq.in</strong> / <strong>demo123</strong>
+            </div>
+          )}
+
+          {mode === 'signin' ? (
+            <form onSubmit={loginForm.handleSubmit(handleSignIn)} className="space-y-4">
+              {/* Email */}
               <div>
-                <label className="block text-sm font-medium text-neutral-dark mb-1.5">
-                  Mobile Number
-                </label>
+                <label className="block text-sm font-medium text-neutral-dark mb-1.5">Email Address</label>
                 <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-gray" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-gray" />
                   <input
-                    {...phoneForm.register('phone')}
-                    type="tel"
-                    placeholder="+91 98765 43210"
-                    className={`input pl-10 ${phoneForm.formState.errors.phone ? 'input-error' : ''}`}
+                    {...loginForm.register('email')}
+                    type="email"
+                    placeholder="you@example.com"
+                    autoComplete="email"
                     autoFocus
+                    className={`input pl-10 ${loginForm.formState.errors.email ? 'input-error' : ''}`}
                   />
                 </div>
-                {phoneForm.formState.errors.phone && (
-                  <p className="text-xs text-danger mt-1">
-                    {phoneForm.formState.errors.phone.message}
-                  </p>
+                {loginForm.formState.errors.email && (
+                  <p className="text-xs text-danger mt-1">{loginForm.formState.errors.email.message}</p>
                 )}
               </div>
 
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="btn-primary w-full"
-              >
+              {/* Password */}
+              <div>
+                <label className="block text-sm font-medium text-neutral-dark mb-1.5">Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-gray" />
+                  <input
+                    {...loginForm.register('password')}
+                    type={showPw ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    autoComplete="current-password"
+                    className={`input pl-10 pr-10 ${loginForm.formState.errors.password ? 'input-error' : ''}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-gray hover:text-neutral-dark"
+                  >
+                    {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {loginForm.formState.errors.password && (
+                  <p className="text-xs text-danger mt-1">{loginForm.formState.errors.password.message}</p>
+                )}
+              </div>
+
+              <button type="submit" disabled={isLoading} className="btn-primary w-full mt-2">
                 {isLoading ? (
                   <span className="flex items-center gap-2">
                     <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    Sending OTP…
+                    Signing in…
                   </span>
                 ) : (
                   <span className="flex items-center gap-2">
-                    Send OTP <ArrowRight className="w-4 h-4" />
+                    Sign In <ArrowRight className="w-4 h-4" />
                   </span>
                 )}
               </button>
+
+              <p className="text-center text-xs text-neutral-gray pt-1">
+                Don't have an account?{' '}
+                <button type="button" onClick={() => setMode('signup')} className="text-primary font-medium hover:underline">
+                  Sign Up
+                </button>
+              </p>
             </form>
           ) : (
-            <form onSubmit={otpForm.handleSubmit(handleVerifyOTP)} className="space-y-4">
+            <form onSubmit={signupForm.handleSubmit(handleSignUp)} className="space-y-4">
+              {/* Email */}
               <div>
-                <label className="block text-sm font-medium text-neutral-dark mb-1.5">
-                  6-Digit OTP
-                </label>
-                <input
-                  {...otpForm.register('otp')}
-                  type="number"
-                  maxLength={6}
-                  placeholder="123456"
-                  className={`input text-center font-mono text-xl tracking-[0.5em] ${
-                    otpForm.formState.errors.otp ? 'input-error' : ''
-                  }`}
-                  autoFocus
-                />
-                {otpForm.formState.errors.otp && (
-                  <p className="text-xs text-danger mt-1">{otpForm.formState.errors.otp.message}</p>
-                )}
-                {isSupabaseDemoMode && (
-                  <p className="text-xs text-neutral-gray mt-1 text-center">
-                    Demo mode — use <strong>123456</strong>
-                  </p>
+                <label className="block text-sm font-medium text-neutral-dark mb-1.5">Email Address</label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-gray" />
+                  <input
+                    {...signupForm.register('email')}
+                    type="email"
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                    autoFocus
+                    className={`input pl-10 ${signupForm.formState.errors.email ? 'input-error' : ''}`}
+                  />
+                </div>
+                {signupForm.formState.errors.email && (
+                  <p className="text-xs text-danger mt-1">{signupForm.formState.errors.email.message}</p>
                 )}
               </div>
 
-              <button type="submit" disabled={isLoading} className="btn-primary w-full">
-                {isLoading ? 'Verifying…' : 'Verify & Login'}
+              {/* Password */}
+              <div>
+                <label className="block text-sm font-medium text-neutral-dark mb-1.5">Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-gray" />
+                  <input
+                    {...signupForm.register('password')}
+                    type={showPw ? 'text' : 'password'}
+                    placeholder="Min. 6 characters"
+                    autoComplete="new-password"
+                    className={`input pl-10 pr-10 ${signupForm.formState.errors.password ? 'input-error' : ''}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-gray hover:text-neutral-dark"
+                  >
+                    {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {signupForm.formState.errors.password && (
+                  <p className="text-xs text-danger mt-1">{signupForm.formState.errors.password.message}</p>
+                )}
+              </div>
+
+              {/* Confirm Password */}
+              <div>
+                <label className="block text-sm font-medium text-neutral-dark mb-1.5">Confirm Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-gray" />
+                  <input
+                    {...signupForm.register('confirmPassword')}
+                    type={showConfirm ? 'text' : 'password'}
+                    placeholder="Re-enter password"
+                    autoComplete="new-password"
+                    className={`input pl-10 pr-10 ${signupForm.formState.errors.confirmPassword ? 'input-error' : ''}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-gray hover:text-neutral-dark"
+                  >
+                    {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {signupForm.formState.errors.confirmPassword && (
+                  <p className="text-xs text-danger mt-1">{signupForm.formState.errors.confirmPassword.message}</p>
+                )}
+              </div>
+
+              <button type="submit" disabled={isLoading} className="btn-primary w-full mt-2">
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Creating account…
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    Create Account <ArrowRight className="w-4 h-4" />
+                  </span>
+                )}
               </button>
 
-              <button
-                type="button"
-                onClick={() => { setStep('phone'); otpForm.reset() }}
-                className="btn-ghost w-full text-sm"
-              >
-                ← Change number
-              </button>
+              <p className="text-center text-xs text-neutral-gray pt-1">
+                Already have an account?{' '}
+                <button type="button" onClick={() => setMode('signin')} className="text-primary font-medium hover:underline">
+                  Sign In
+                </button>
+              </p>
             </form>
           )}
 
