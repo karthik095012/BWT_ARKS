@@ -1,0 +1,52 @@
+{
+  "name": "CredIQ — Score Calculated Alert",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "crediq-score",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "b1a2c3d4-e5f6-7890-abcd-ef1234567890",
+      "name": "Webhook: Score Calculated",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "crediq-score"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst score = data.score;\nconst tier = data.tier;\nconst phone = data.phone;\n\nlet emoji = '📊';\nif (score >= 750) emoji = '🌟';\nelse if (score >= 650) emoji = '✅';\nelse if (score >= 550) emoji = '⚠️';\nelse emoji = '🔴';\n\nreturn [{\n  json: {\n    message: `${emoji} CredIQ Score Update\\nScore: ${score}/850 (${tier})\\nPhone: ${phone}\\nCalculated at: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`,\n    score,\n    tier,\n    phone,\n    emoji\n  }\n}];"
+      },
+      "id": "c2b3d4e5-f6a7-8901-bcde-f12345678901",
+      "name": "Format Score Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"received\", \"score\": {{ $json.score }} }"
+      },
+      "id": "d3c4e5f6-a7b8-9012-cdef-123456789012",
+      "name": "Respond to CredIQ",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Webhook: Score Calculated": {
+      "main": [[{ "node": "Format Score Message", "type": "main", "index": 0 }]]
+    },
+    "Format Score Message": {
+      "main": [[{ "node": "Respond to CredIQ", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "CredIQ" }],
+  "meta": { "templateCredsSetupCompleted": true }
+}

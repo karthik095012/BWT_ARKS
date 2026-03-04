@@ -10,6 +10,7 @@ import CredScorePage from '@/pages/CredScorePage'
 import ScamShieldPage from '@/pages/ScamShieldPage'
 import TransactionsPage from '@/pages/TransactionsPage'
 import LoansPage from '@/pages/LoansPage'
+import AutomationsPage from '@/pages/AutomationsPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAppStore((s) => s.isAuthenticated)
@@ -62,6 +63,7 @@ export default function App() {
           <Route path="scamshield" element={<ScamShieldPage />} />
           <Route path="transactions" element={<TransactionsPage />} />
           <Route path="loans" element={<LoansPage />} />
+          <Route path="automations" element={<AutomationsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

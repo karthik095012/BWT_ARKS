@@ -1,0 +1,52 @@
+{
+  "name": "CredIQ — Loan Application Notification",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "crediq-loan",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "d4e5f6a7-b8c9-0123-defa-444444444444",
+      "name": "Webhook: Loan Applied",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "crediq-loan"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nreturn [{\n  json: {\n    notification: `🏦 New Loan Application — CredIQ\\nProduct: ${data.loanType}\\nProvider: ${data.provider}\\nAmount: ₹${Number(data.amount).toLocaleString('en-IN')}\\nCredScore: ${data.score}/850\\nTime: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`,\n    ...data\n  }\n}];"
+      },
+      "id": "e5f6a7b8-c9d0-1234-efab-555555555555",
+      "name": "Format Loan Notification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"application_received\" }"
+      },
+      "id": "f6a7b8c9-d0e1-2345-fabc-666666666666",
+      "name": "Respond to CredIQ",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Webhook: Loan Applied": {
+      "main": [[{ "node": "Format Loan Notification", "type": "main", "index": 0 }]]
+    },
+    "Format Loan Notification": {
+      "main": [[{ "node": "Respond to CredIQ", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "CredIQ" }],
+  "meta": { "templateCredsSetupCompleted": true }
+}

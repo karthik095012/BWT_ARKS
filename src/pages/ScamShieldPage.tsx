@@ -6,6 +6,7 @@ import {
 import { useForm } from 'react-hook-form'
 import { analyzeScamRisk } from '@/services/ollama'
 import { useAppStore } from '@/store/useAppStore'
+import { triggerScamDetected } from '@/services/n8n'
 import { getRiskColor, formatDate } from '@/utils/helpers'
 import toast from 'react-hot-toast'
 
@@ -96,6 +97,8 @@ export default function ScamShieldPage() {
       if (result.isScam) {
         incrementScamsBlocked()
         setShowModal(true)
+        // Fire n8n scam alert automation (non-blocking)
+        triggerScamDetected(data.input, result.riskLevel, result.riskScore, result.scamType || 'unknown')
       } else {
         toast.success(`Low risk detected. Stay cautious!`)
       }

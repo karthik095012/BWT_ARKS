@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Banknote, CheckCircle2, Clock, TrendingUp, ArrowRight, Shield, Bot } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { useNavigate } from 'react-router-dom'
+import { triggerLoanApplied } from '@/services/n8n'
 import { formatCurrency } from '@/utils/helpers'
 import toast from 'react-hot-toast'
 
@@ -109,6 +110,8 @@ export default function LoansPage() {
     setApplied((prev) => [...prev, product.id])
     setApplying(null)
     toast.success(`Application submitted to ${product.provider}! You'll hear back in ${product.turnaround}.`)
+    // Fire n8n loan automation (non-blocking)
+    triggerLoanApplied(product.type, product.provider, product.maxAmount, credScore.score)
   }
 
   const eligible = credScore ? credScore.loanEligibility : null

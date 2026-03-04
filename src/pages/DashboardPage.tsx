@@ -11,6 +11,7 @@ import {
 import { useAppStore } from '@/store/useAppStore'
 import { generateMockTransactions } from '@/services/upiParser'
 import { analyzeTransactions } from '@/services/ollama'
+import { triggerScoreCalculated } from '@/services/n8n'
 import { calculateCredScore, buildDashboardStats, generateImprovements } from '@/utils/credScore'
 import { formatCurrency } from '@/utils/helpers'
 import ScoreGauge from '@/components/ui/ScoreGauge'
@@ -59,6 +60,8 @@ export default function DashboardPage() {
       const stats = buildDashboardStats(transactions)
       setDashboardStats(stats)
       toast.success(`CredScore calculated: ${score.score} (${score.tier})`, { id: toastId })
+      // Fire n8n automation (non-blocking)
+      triggerScoreCalculated(score.score, score.tier, user?.phone || 'unknown')
     } catch {
       toast.error('Analysis failed. Please retry.', { id: toastId })
     } finally {

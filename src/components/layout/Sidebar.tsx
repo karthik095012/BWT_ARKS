@@ -9,6 +9,7 @@ import {
   Bot,
   X,
   TrendingUp,
+  Workflow,
 } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { cn } from '@/utils/helpers'
@@ -19,6 +20,7 @@ const NAV_ITEMS = [
   { path: '/scamshield', icon: ShieldAlert, label: 'ScamShield' },
   { path: '/transactions', icon: List, label: 'Transactions' },
   { path: '/loans', icon: Banknote, label: 'Loans' },
+  { path: '/automations', icon: Workflow, label: 'Automations' },
 ]
 
 export default function Sidebar() {

@@ -1,0 +1,52 @@
+{
+  "name": "CredIQ — Scam Detected Alert",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "crediq-scam",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1b2c3d4-e5f6-7890-abcd-111111111111",
+      "name": "Webhook: Scam Detected",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "crediq-scam"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst level = data.riskLevel?.toUpperCase() || 'HIGH';\nconst input = data.input;\nconst scamType = data.scamType || 'Unknown';\nconst score = data.riskScore || 0;\n\nreturn [{\n  json: {\n    alert: `🚨 SCAM ALERT — CredIQ ScamShield\\nNumber: ${input}\\nRisk Level: ${level} (${score}/100)\\nType: ${scamType}\\nTime: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}\\n\\n⛔ Do NOT answer. Report to cybercrime.gov.in`,\n    input,\n    riskLevel: level,\n    riskScore: score,\n    scamType\n  }\n}];"
+      },
+      "id": "b2c3d4e5-f6a7-8901-bcde-222222222222",
+      "name": "Format Scam Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"alert_sent\", \"riskLevel\": {{ $json.riskLevel }} }"
+      },
+      "id": "c3d4e5f6-a7b8-9012-cdef-333333333333",
+      "name": "Respond to CredIQ",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Webhook: Scam Detected": {
+      "main": [[{ "node": "Format Scam Alert", "type": "main", "index": 0 }]]
+    },
+    "Format Scam Alert": {
+      "main": [[{ "node": "Respond to CredIQ", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "CredIQ" }],
+  "meta": { "templateCredsSetupCompleted": true }
+}
