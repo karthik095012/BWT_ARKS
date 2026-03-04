@@ -99,7 +99,7 @@ export default function AutomationsPage() {
           <div className={`flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full ${
             n8nOnline === null ? 'bg-neutral-light text-neutral-gray'
             : n8nOnline ? 'bg-success-light text-green-700'
-            : 'bg-danger-light text-red-700'
+            : 'bg-neutral-light text-neutral-gray'
           }`}>
             {n8nOnline === null ? <Circle className="w-3 h-3" />
               : n8nOnline ? <Wifi className="w-3.5 h-3.5" />
@@ -127,21 +127,11 @@ export default function AutomationsPage() {
         </div>
       </div>
 
-      {/* n8n offline banner */}
+      {/* n8n offline subtle note */}
       {n8nOnline === false && (
-        <div className="card border border-amber-200 bg-amber-50">
-          <div className="flex items-start gap-3">
-            <WifiOff className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="font-medium text-amber-800">Automation engine is not running</p>
-              <p className="text-sm text-amber-700 mt-0.5 mb-3">
-                Start it with the command below to enable WhatsApp/SMS/email alerts. Until then, events are only saved locally.
-              </p>
-              <code className="block bg-neutral-dark text-green-400 text-xs rounded-lg px-4 py-3 font-mono">
-                docker-compose up -d n8n
-              </code>
-            </div>
-          </div>
+        <div className="flex items-center gap-2 text-sm text-neutral-gray bg-neutral-light/60 rounded-xl px-4 py-2.5">
+          <WifiOff className="w-4 h-4 shrink-0" />
+          <span>n8n is not running — events are saved locally. Run <code className="text-xs font-mono bg-neutral-dark/10 px-1.5 py-0.5 rounded">docker-compose up -d n8n</code> to enable live alerts.</span>
         </div>
       )}
 
