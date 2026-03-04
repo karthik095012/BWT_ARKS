@@ -12,7 +12,7 @@ import {
   Workflow,
 } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
-import { cn } from '@/utils/helpers'
+import { cn, extractDisplayName } from '@/utils/helpers'
 
 const NAV_ITEMS = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -143,13 +143,13 @@ export default function Sidebar() {
         <div className="border-t border-neutral-border px-4 py-3">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-score-gradient flex items-center justify-center text-white font-bold text-sm shrink-0">
-              {user?.name?.[0] || user?.phone?.[2] || 'U'}
+              {(user?.name?.includes('@') ? extractDisplayName(user.name) : user?.name)?.[0]?.toUpperCase() || 'U'}
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium text-neutral-dark truncate">
-                {user?.name || 'User'}
+                {user?.name?.includes('@') ? extractDisplayName(user.name) : (user?.name || extractDisplayName(user?.email || 'user'))}
               </div>
-              <div className="text-xs text-neutral-gray truncate">{user?.phone || user?.email || ''}</div>
+              <div className="text-xs text-neutral-gray truncate">{user?.email || user?.phone || ''}</div>
             </div>
             <button
               onClick={handleLogout}
