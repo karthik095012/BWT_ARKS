@@ -135,15 +135,22 @@ export default function Sidebar() {
         {/* User + logout */}
         <div className="border-t border-neutral-border px-4 py-3">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-score-gradient flex items-center justify-center text-white font-bold text-sm shrink-0">
+            <button
+              onClick={() => { navigate('/profile'); if (window.innerWidth < 768) setSidebarOpen(false) }}
+              title="Edit Profile"
+              className="w-9 h-9 rounded-full bg-score-gradient flex items-center justify-center text-white font-bold text-sm shrink-0 hover:ring-2 hover:ring-primary/40 transition-all cursor-pointer"
+            >
               {cleanInitials(user?.name, user?.email)}
-            </div>
-            <div className="flex-1 min-w-0">
+            </button>
+            <button
+              onClick={() => { navigate('/profile'); if (window.innerWidth < 768) setSidebarOpen(false) }}
+              className="flex-1 min-w-0 text-left hover:opacity-75 transition-opacity"
+            >
               <p className="text-sm font-semibold text-neutral-dark truncate leading-tight">
                 {getDisplayName(user?.name, user?.email)}
               </p>
               <p className="text-xs text-neutral-gray truncate">{user?.email || user?.phone || ''}</p>
-            </div>
+            </button>
             <button
               onClick={handleLogout}
               title="Logout"

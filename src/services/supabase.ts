@@ -285,6 +285,21 @@ export async function checkUsernameAvailable(username: string): Promise<boolean>
   }
 }
 
+/** Initiate an email address change — sends OTP to the NEW email.
+ *  The user must then call verifyEmailChangeOTP to confirm. */
+export async function sendEmailChangeOTP(newEmail: string): Promise<void> {
+  if (!supabase) throw new Error('Supabase not configured')
+  const { error } = await supabase.auth.updateUser({ email: newEmail })
+  if (error) throw error
+}
+
+/** Verify the OTP sent to the NEW email during an email change flow. */
+export async function verifyEmailChangeOTP(newEmail: string, token: string): Promise<void> {
+  if (!supabase) throw new Error('Supabase not configured')
+  const { error } = await supabase.auth.verifyOtp({ email: newEmail, token, type: 'email_change' })
+  if (error) throw error
+}
+
 /** Sign out the current session. */
 export async function signOut(): Promise<void> {
   await supabase?.auth.signOut()

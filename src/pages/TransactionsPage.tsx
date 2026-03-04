@@ -60,7 +60,7 @@ export default function TransactionsPage() {
       const largestDebit = parsed
         .filter((t) => t.type === 'DEBIT' && t.status === 'SUCCESS')
         .sort((a, b) => b.amount - a.amount)[0]
-      if (largestDebit && largestDebit.amount > 50000) {
+      if (largestDebit && largestDebit.amount > 5000) {
         triggerSuspiciousTransaction(largestDebit.amount, largestDebit.description, largestDebit.merchantName || 'Unknown').catch(() => {})
       }
     } catch (err: unknown) {
