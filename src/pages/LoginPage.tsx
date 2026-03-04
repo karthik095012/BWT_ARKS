@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -8,10 +8,9 @@ import { useAppStore } from '@/store/useAppStore'
 import {
   sendPhoneOTP,
   verifyPhoneOTP,
-  isFirebaseDemoMode,
+  isSupabaseDemoMode,
   saveUser,
-} from '@/services/firebase'
-import type { ConfirmationResult } from 'firebase/auth'
+} from '@/services/supabase'
 import toast from 'react-hot-toast'
 import type { User } from '@/types'
 
@@ -33,7 +32,6 @@ export default function LoginPage() {
   const [step, setStep] = useState<'phone' | 'otp'>('phone')
   const [phone, setPhone] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const confirmationRef = useRef<ConfirmationResult | null>(null)
   const { setUser } = useAppStore()
   const navigate = useNavigate()
 
@@ -49,24 +47,16 @@ export default function LoginPage() {
     const e164 = toE164(data.phone)
     setPhone(e164)
 
-    if (isFirebaseDemoMode) {
+    if (isSupabaseDemoMode) {
       // ── Demo mode: no real SMS ──────────────────────────────
       await new Promise((r) => setTimeout(r, 1000))
       toast.success(`OTP sent to ${e164}  (Demo — use 123456)`)
     } else {
-      // ── Real Firebase Phone Auth ────────────────────────────
+      // Real Supabase Phone Auth
       try {
-        confirmationRef.current = await sendPhoneOTP(e164, 'send-otp-btn')
+        await sendPhoneOTP(e164)
         toast.success(`OTP sent to ${e164}`)
       } catch (err: unknown) {
-        const code = (err as { code?: string }).code || ''
-        if (code === 'auth/billing-not-enabled') {
-          // Blaze plan not enabled — fall back to demo mode silently
-          toast('SMS requires Blaze plan. Using demo OTP: 123456', { icon: '⚠️' })
-          setStep('otp')
-          setIsLoading(false)
-          return
-        }
         const msg = err instanceof Error ? err.message : 'Failed to send OTP'
         toast.error(msg)
         setIsLoading(false)
@@ -82,24 +72,14 @@ export default function LoginPage() {
     setIsLoading(true)
     let uid: string
 
-    if (isFirebaseDemoMode || !confirmationRef.current) {
-      // ── Demo mode (or billing-not-enabled fallback) ────────
-      if (data.otp !== '123456') {
-        otpForm.setError('otp', { message: 'Invalid OTP. Use 123456 for demo.' })
-        setIsLoading(false)
-        return
-      }
-      await new Promise((r) => setTimeout(r, 800))
-      uid = `demo_${Date.now()}`
-    } else {
-      // ── Real Firebase verification ─────────────────────────
-      try {
-        uid = await verifyPhoneOTP(confirmationRef.current!, data.otp)
-      } catch {
-        otpForm.setError('otp', { message: 'Invalid OTP. Please try again.' })
-        setIsLoading(false)
-        return
-      }
+    try {
+      uid = await verifyPhoneOTP(phone, data.otp)
+    } catch {
+      otpForm.setError('otp', {
+        message: isSupabaseDemoMode ? 'Invalid OTP. Use 123456 for demo.' : 'Invalid OTP. Please try again.',
+      })
+      setIsLoading(false)
+      return
     }
 
     const user: User = {
@@ -109,8 +89,7 @@ export default function LoginPage() {
       createdAt: new Date(),
       lastLogin: new Date(),
     }
-    // Persist to Firestore (no-op in demo mode if db is unpopulated)
-    await saveUser(uid, { phone, lastLogin: new Date().toISOString() })
+    await saveUser(uid, { phone, last_login: new Date().toISOString() })
     setUser(user)
     toast.success('Welcome to CredIQ!')
     navigate('/dashboard')
@@ -209,11 +188,7 @@ export default function LoginPage() {
                 )}
               </div>
 
-              {/* Invisible reCAPTCHA anchor (required by Firebase Phone Auth) */}
-              <div id="recaptcha-container" />
-
               <button
-                id="send-otp-btn"
                 type="submit"
                 disabled={isLoading}
                 className="btn-primary w-full"
@@ -252,7 +227,7 @@ export default function LoginPage() {
                 {otpForm.formState.errors.otp && (
                   <p className="text-xs text-danger mt-1">{otpForm.formState.errors.otp.message}</p>
                 )}
-                {isFirebaseDemoMode && (
+                {isSupabaseDemoMode && (
                   <p className="text-xs text-neutral-gray mt-1 text-center">
                     Demo mode — use <strong>123456</strong>
                   </p>

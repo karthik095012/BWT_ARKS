@@ -201,3 +201,89 @@ export async function incrementReportCount(id: string): Promise<void> {
   if (!supabase) return
   await supabase.rpc('increment_report_count', { record_id: id }).throwOnError?.()
 }
+
+// ─── Auth ─────────────────────────────────────────────────────────────────
+
+/** Demo mode: true when Supabase is not configured → no real SMS sent */
+export const isSupabaseDemoMode = !isSupabaseConfigured
+
+/**
+ * Send phone OTP via Supabase Auth (Phone provider must be enabled in dashboard).
+ * Phone must be E.164 format: "+91XXXXXXXXXX"
+ */
+export async function sendPhoneOTP(phoneE164: string): Promise<void> {
+  if (!supabase || isSupabaseDemoMode) return // demo: skip real SMS
+  const { error } = await supabase.auth.signInWithOtp({ phone: phoneE164 })
+  if (error) throw error
+}
+
+/**
+ * Verify the 6-digit OTP. Returns the user's UID on success.
+ */
+export async function verifyPhoneOTP(phoneE164: string, otp: string): Promise<string> {
+  if (!supabase || isSupabaseDemoMode) {
+    if (otp !== '123456') throw new Error('Invalid OTP. Use 123456 for demo.')
+    return `demo_${Date.now()}`
+  }
+  const { data, error } = await supabase.auth.verifyOtp({
+    phone: phoneE164,
+    token: otp,
+    type: 'sms',
+  })
+  if (error) throw error
+  return data.user?.id ?? `uid_${Date.now()}`
+}
+
+// ─── User DB helpers ──────────────────────────────────────────────────────
+
+export async function saveUser(uid: string, data: Record<string, unknown>): Promise<void> {
+  if (!supabase) return
+  try {
+    await supabase
+      .from('users')
+      .upsert({ id: uid, ...data, updated_at: new Date().toISOString() })
+  } catch (err) {
+    console.warn('saveUser error:', err)
+  }
+}
+
+export async function getUser(uid: string): Promise<Record<string, unknown> | null> {
+  if (!supabase) return null
+  try {
+    const { data } = await supabase.from('users').select('*').eq('id', uid).single()
+    return data
+  } catch {
+    return null
+  }
+}
+
+// ─── CredScore DB helpers ─────────────────────────────────────────────────
+
+export async function saveCredScore(uid: string, scoreData: Record<string, unknown>): Promise<void> {
+  if (!supabase) return
+  try {
+    await supabase.from('cred_scores').insert([{
+      user_id: uid,
+      ...scoreData,
+      calculated_at: new Date().toISOString(),
+    }])
+  } catch (err) {
+    console.warn('saveCredScore error:', err)
+  }
+}
+
+export async function getLatestCredScore(uid: string): Promise<Record<string, unknown> | null> {
+  if (!supabase) return null
+  try {
+    const { data } = await supabase
+      .from('cred_scores')
+      .select('*')
+      .eq('user_id', uid)
+      .order('calculated_at', { ascending: false })
+      .limit(1)
+      .single()
+    return data
+  } catch {
+    return null
+  }
+}
