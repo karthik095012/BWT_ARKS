@@ -1,5 +1,9 @@
 import Papa from 'papaparse'
+import * as pdfjsLib from 'pdfjs-dist'
 import type { UPITransaction, TransactionCategory } from '@/types'
+
+// Use CDN worker so Vite doesn't need to bundle it
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`
 
 // ===== UPI CSV Parser =====
 // Supports formats from HDFC, SBI, Paytm, PhonePe, GPay exports
@@ -135,6 +139,76 @@ export function parseUPICSV(csvContent: string): UPITransaction[] {
   })
 
   // Sort by date descending
+  return transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+}
+
+// ===== PDF Bank Statement Parser =====
+export async function parseUPIPDF(arrayBuffer: ArrayBuffer): Promise<UPITransaction[]> {
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+  let fullText = ''
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i)
+    const content = await page.getTextContent()
+    const pageText = content.items
+      .map((item) => ('str' in item ? item.str : ''))
+      .join(' ')
+    fullText += pageText + '\n'
+  }
+
+  // Split into lines and try to parse transaction rows
+  const lines = fullText.split(/\n|\r/).map((l) => l.trim()).filter(Boolean)
+  const transactions: UPITransaction[] = []
+
+  // Regex patterns for common Indian bank PDF formats
+  const datePattern = /\b(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})\b/
+  const amountPattern = /(?:Rs\.?|INR|₹)?\s*([\d,]+\.?\d{0,2})/gi
+  const crPattern = /\b(cr|credit|credited|deposit)\b/i
+  const drPattern = /\b(dr|debit|debited|withdrawal|withdraw)\b/i
+
+  for (const line of lines) {
+    const dateMatch = line.match(datePattern)
+    if (!dateMatch) continue
+
+    const amounts: number[] = []
+    let match
+    const amountPatternLocal = /(?:Rs\.?|INR|₹)?\s*([\d,]+\.?\d{0,2})/gi
+    while ((match = amountPatternLocal.exec(line)) !== null) {
+      const val = parseFloat(match[1].replace(/,/g, ''))
+      if (val > 0 && val < 10_000_000) amounts.push(val)
+    }
+
+    if (!amounts.length) continue
+
+    const isCr = crPattern.test(line)
+    const isDr = drPattern.test(line)
+    const type: 'CREDIT' | 'DEBIT' = isCr ? 'CREDIT' : isDr ? 'DEBIT' : amounts.length > 1 ? 'CREDIT' : 'DEBIT'
+    const amount = amounts[0]
+
+    // Best-effort description — take the text without date/amounts
+    const desc = line
+      .replace(datePattern, '')
+      .replace(/(?:Rs\.?|INR|₹)?\s*[\d,]+\.?\d{0,2}/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 120) || 'UPI Transaction'
+
+    transactions.push({
+      id: `pdf_${Date.now()}_${transactions.length}`,
+      date: parseDate(dateMatch[1]),
+      type,
+      amount,
+      description: desc,
+      status: 'SUCCESS',
+      category: categorizeByRules(desc),
+      isAIProcessed: false,
+    })
+  }
+
+  if (!transactions.length) {
+    throw new Error('No transactions found in PDF. Try exporting as CSV instead.')
+  }
+
   return transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 }
 

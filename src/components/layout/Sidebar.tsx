@@ -49,7 +49,7 @@ export default function Sidebar() {
           'fixed top-0 left-0 h-full w-60 bg-white border-r border-neutral-border z-30',
           'flex flex-col transition-transform duration-300',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full',
-          'md:translate-x-0',
+
         )}
       >
         {/* Logo */}
@@ -63,9 +63,18 @@ export default function Sidebar() {
               <div className="text-xs text-neutral-gray">AI Finance Platform</div>
             </div>
           </div>
+          {/* Mobile close */}
           <button
             onClick={() => setSidebarOpen(false)}
             className="md:hidden text-neutral-gray hover:text-neutral-dark p-1 rounded"
+          >
+            <X className="w-4 h-4" />
+          </button>
+          {/* Desktop collapse */}
+          <button
+            onClick={() => setSidebarOpen(false)}
+            title="Collapse sidebar"
+            className="hidden md:flex items-center justify-center w-7 h-7 rounded-md text-neutral-gray hover:text-neutral-dark hover:bg-neutral-light transition-colors"
           >
             <X className="w-4 h-4" />
           </button>

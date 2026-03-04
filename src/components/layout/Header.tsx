@@ -8,6 +8,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/scamshield': 'ScamShield',
   '/transactions': 'Transactions',
   '/loans': 'Loan Marketplace',
+  '/automations': 'Automations',
 }
 
 export default function Header() {

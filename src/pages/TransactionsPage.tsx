@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { Upload, FileText, X, Bot, Filter, Search, Download } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
-import { parseUPICSV, generateMockTransactions } from '@/services/upiParser'
+import { parseUPICSV, parseUPIPDF, generateMockTransactions } from '@/services/upiParser'
 import { buildDashboardStats } from '@/utils/credScore'
 import { formatCurrency, formatDate } from '@/utils/helpers'
 import TransactionItem from '@/components/ui/TransactionItem'
@@ -32,18 +32,26 @@ export default function TransactionsPage() {
   const PER_PAGE = 20
 
   const handleFile = async (file: File) => {
-    if (!file.name.endsWith('.csv')) {
-      toast.error('Please upload a CSV file.')
+    const isPDF = file.name.toLowerCase().endsWith('.pdf')
+    const isCSV = file.name.toLowerCase().endsWith('.csv')
+    if (!isPDF && !isCSV) {
+      toast.error('Please upload a CSV or PDF file.')
       return
     }
-    const toastId = toast.loading('Parsing UPI transactions…')
+    const toastId = toast.loading(`Parsing ${isPDF ? 'PDF' : 'CSV'} transactions…`)
     try {
-      const text = await file.text()
-      const parsed = parseUPICSV(text)
+      let parsed
+      if (isPDF) {
+        const buffer = await file.arrayBuffer()
+        parsed = await parseUPIPDF(buffer)
+      } else {
+        const text = await file.text()
+        parsed = parseUPICSV(text)
+      }
       setTransactions(parsed)
       const stats = buildDashboardStats(parsed)
       setDashboardStats(stats)
-      toast.success(`Loaded ${parsed.length} transactions!`, { id: toastId })
+      toast.success(`Loaded ${parsed.length} transactions from ${isPDF ? 'PDF' : 'CSV'}!`, { id: toastId })
       setPage(1)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Parse error'
@@ -106,19 +114,19 @@ export default function TransactionsPage() {
           <input
             ref={fileRef}
             type="file"
-            accept=".csv"
+            accept=".csv,.pdf"
             className="hidden"
             onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
           />
           <Upload className="w-12 h-12 text-primary mx-auto mb-4" />
-          <h3 className="font-bold text-neutral-dark text-lg mb-2">Upload UPI Transaction CSV</h3>
+          <h3 className="font-bold text-neutral-dark text-lg mb-2">Upload Bank Statement</h3>
           <p className="text-neutral-gray mb-4 max-w-md mx-auto text-sm">
-            Export from your bank app or UPI app (PhonePe, GPay, Paytm) and upload here.
-            All processing happens locally — zero cloud upload.
+            Export from your bank's net banking or UPI app and upload here.
+            Supports <strong>CSV</strong> and <strong>PDF</strong> — all processing happens locally.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button className="btn-primary" onClick={(e) => { e.stopPropagation(); fileRef.current?.click() }}>
-              <FileText className="w-4 h-4" /> Choose CSV File
+              <FileText className="w-4 h-4" /> Choose CSV or PDF
             </button>
             <button
               className="btn-secondary"
@@ -128,7 +136,7 @@ export default function TransactionsPage() {
             </button>
           </div>
           <p className="text-xs text-neutral-gray mt-4">
-            Supports: HDFC, SBI, ICICI, Axis, Paytm, PhonePe, GPay exports · Max 12 months
+            Supports: HDFC, SBI, ICICI, Axis, Kotak · CSV & PDF exports · Max 12 months
           </p>
         </div>
       )}
