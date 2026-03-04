@@ -108,34 +108,32 @@ export default function LoginPage() {
     try {
       const { uid, needsConfirmation } = await signUpWithEmail(data.email, data.password, { name, username })
 
-      if (!needsConfirmation) {
-        // Email confirmation is disabled in Supabase — user is live immediately
-        const user: User = {
-          uid,
-          email: data.email,
-          name,
-          username,
-          createdAt: new Date(),
-          lastLogin: new Date(),
-        }
-        await saveUser(uid, {
-          email: data.email,
-          name,
-          username,
-          last_login: new Date().toISOString(),
-          created_at: new Date().toISOString(),
-        })
-        setUser(user)
-        toast.success(`Welcome to CredIQ, ${name}!`)
-        navigate('/dashboard')
-      } else {
-        // Supabase sent a confirmation email — show OTP screen
-        setPendingEmail(data.email)
-        setPendingName(name)
-        setPendingUsername(username)
-        setMode('verify_otp')
-        toast.success('Check your email for the 6-digit verification code!')
+      // Always save profile and log in immediately.
+      // If Supabase requires email confirmation the session will be limited,
+      // but for the demo flow we proceed to dashboard right away.
+      const user: User = {
+        uid,
+        email: data.email,
+        name,
+        username,
+        createdAt: new Date(),
+        lastLogin: new Date(),
       }
+      await saveUser(uid, {
+        email: data.email,
+        name,
+        username,
+        last_login: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+      })
+      setUser(user)
+
+      if (needsConfirmation) {
+        toast.success(`Welcome, ${name}! A confirmation link was also sent to your email.`)
+      } else {
+        toast.success(`Welcome to CredIQ, ${name}!`)
+      }
+      navigate('/dashboard')
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Sign up failed'
       if (msg.toLowerCase().includes('already registered') || msg.toLowerCase().includes('already exists')) {
