@@ -228,13 +228,15 @@ export async function verifyPhoneOTP(phoneE164: string, otp: string): Promise<st
 
 // ── Email + Password Auth (primary) ───────────────────────────────
 
-/** Sign up with email + password + profile metadata. Returns the user's UID.
- *  Supabase will send a confirmation email — verify with verifyEmailOTP(). */
+/** Sign up with email + password + profile metadata.
+ *  Returns { uid, needsConfirmation }.
+ *  needsConfirmation = true  → Supabase sent a confirmation email (OTP or link)
+ *  needsConfirmation = false → email confirmation is disabled, user is live immediately */
 export async function signUpWithEmail(
   email: string,
   password: string,
   metadata?: { name?: string; username?: string },
-): Promise<string> {
+): Promise<{ uid: string; needsConfirmation: boolean }> {
   if (!supabase) throw new Error('Supabase not configured')
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -243,7 +245,9 @@ export async function signUpWithEmail(
   })
   if (error) throw error
   if (!data.user) throw new Error('Sign up failed — no user returned')
-  return data.user.id
+  // If session is returned immediately, email confirmation is disabled in Supabase
+  const needsConfirmation = !data.session
+  return { uid: data.user.id, needsConfirmation }
 }
 
 /** Verify the 6-digit OTP sent to the email after signUp. Returns UID. */
