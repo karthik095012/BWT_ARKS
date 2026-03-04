@@ -3,7 +3,7 @@ import { Upload, FileText, X, Bot, Filter, Search, Download } from 'lucide-react
 import { useAppStore } from '@/store/useAppStore'
 import { parseUPICSV, parseUPIPDF, generateMockTransactions } from '@/services/upiParser'
 import { buildDashboardStats } from '@/utils/credScore'
-import { triggerCSVUploaded } from '@/services/n8n'
+import { triggerCSVUploaded, triggerSuspiciousTransaction } from '@/services/n8n'
 import { formatCurrency, formatDate } from '@/utils/helpers'
 import TransactionItem from '@/components/ui/TransactionItem'
 import toast from 'react-hot-toast'
@@ -54,8 +54,15 @@ export default function TransactionsPage() {
       setDashboardStats(stats)
       toast.success(`Loaded ${parsed.length} transactions from ${isPDF ? 'PDF' : 'CSV'}!`, { id: toastId })
       setPage(1)
-      // Fire n8n automation (non-blocking)
+      // Fire n8n automations (non-blocking)
       triggerCSVUploaded(parsed.length, Math.round(parsed.length / 30)).catch(() => {})
+      // Flag largest debit as suspicious if > ₹50,000
+      const largestDebit = parsed
+        .filter((t) => t.type === 'DEBIT' && t.status === 'SUCCESS')
+        .sort((a, b) => b.amount - a.amount)[0]
+      if (largestDebit && largestDebit.amount > 50000) {
+        triggerSuspiciousTransaction(largestDebit.amount, largestDebit.description, largestDebit.merchantName || 'Unknown').catch(() => {})
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Parse error'
       toast.error(msg, { id: toastId })

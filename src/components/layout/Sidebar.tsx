@@ -149,7 +149,7 @@ export default function Sidebar() {
               <div className="text-sm font-medium text-neutral-dark truncate">
                 {user?.name || 'User'}
               </div>
-              <div className="text-xs text-neutral-gray truncate">{user?.phone}</div>
+              <div className="text-xs text-neutral-gray truncate">{user?.phone || user?.email || ''}</div>
             </div>
             <button
               onClick={handleLogout}

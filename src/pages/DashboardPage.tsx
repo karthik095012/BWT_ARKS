@@ -11,7 +11,7 @@ import {
 import { useAppStore } from '@/store/useAppStore'
 import { generateMockTransactions, parseUPICSV, parseUPIPDF } from '@/services/upiParser'
 import { analyzeTransactions } from '@/services/ollama'
-import { triggerScoreCalculated } from '@/services/n8n'
+import { triggerScoreCalculated, triggerScoreImproved } from '@/services/n8n'
 import { calculateCredScore, buildDashboardStats, generateImprovements } from '@/utils/credScore'
 import { formatCurrency, cleanDisplayName } from '@/utils/helpers'
 import ScoreGauge from '@/components/ui/ScoreGauge'
@@ -79,8 +79,11 @@ export default function DashboardPage() {
       setDashboardStats(stats)
       clearTimeout(hardTimeout)
       toast.success(`CredScore: ${score.score} (${score.tier})`, { id: toastId })
-      // Fire n8n automation (non-blocking, safe)
+      // Fire n8n automations (non-blocking, safe)
       triggerScoreCalculated(score.score, score.tier, user?.phone || user?.email || '+916238046005').catch(() => {})
+      if (credScore && score.score - credScore.score >= 10) {
+        triggerScoreImproved(credScore.score, score.score, score.tier).catch(() => {})
+      }
     } catch (err) {
       clearTimeout(hardTimeout)
       console.error('Score calculation error:', err)

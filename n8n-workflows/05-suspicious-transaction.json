@@ -1,0 +1,68 @@
+{
+  "name": "CredIQ \u2014 Suspicious Transaction",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "crediq-suspicious",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook: Suspicious Transaction",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "crediq-suspicious"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst amount = body.amount || 0;\nconst description = body.description || 'Unknown transaction';\nconst merchant = body.merchant || 'Unknown merchant';\nconst alert = `\u26a0\ufe0f CredIQ Suspicious Transaction Alert\n\nA large transaction was detected:\n\ud83d\udcb8 Amount: \u20b9${amount.toLocaleString('en-IN')}\n\ud83c\udfe2 Merchant: ${merchant}\n\ud83d\udcdd Note: ${description}\n\nReview your transactions at CredIQ and dispute if unrecognised.`;\nreturn [{ json: { ...body, alert } }];"
+      },
+      "name": "Format Suspicious Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "to": "whatsapp:+916238046005",
+        "from": "whatsapp:+14155238886",
+        "body": "={{ $json.alert }}",
+        "toWhatsApp": true
+      },
+      "name": "WhatsApp: Suspicious Alert",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "credentials": {
+        "twilioApi": {
+          "name": "Twilio account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{ \"status\": \"received\" }",
+        "options": {}
+      },
+      "name": "Respond to CredIQ5",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Webhook: Suspicious Transaction": {
+      "main": [[{ "node": "Format Suspicious Alert", "type": "main", "index": 0 }]]
+    },
+    "Format Suspicious Alert": {
+      "main": [[{ "node": "WhatsApp: Suspicious Alert", "type": "main", "index": 0 }]]
+    },
+    "WhatsApp: Suspicious Alert": {
+      "main": [[{ "node": "Respond to CredIQ5", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" }
+}

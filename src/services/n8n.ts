@@ -168,3 +168,11 @@ export function triggerLoanApplied(
 export function triggerCSVUploaded(txCount: number, monthsCovered: number) {
   return triggerAutomation('csv_uploaded', { txCount, monthsCovered })
 }
+
+export function triggerSuspiciousTransaction(amount: number, description: string, merchant: string) {
+  return triggerAutomation('suspicious_transaction', { amount, description, merchant })
+}
+
+export function triggerScoreImproved(oldScore: number, newScore: number, tier: string) {
+  return triggerAutomation('score_improved', { oldScore, newScore, improvement: newScore - oldScore, tier })
+}

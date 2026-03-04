@@ -1,0 +1,68 @@
+{
+  "name": "CredIQ \u2014 Score Improved",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "crediq-improved",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook: Score Improved",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "crediq-improved"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst oldScore = body.oldScore || 0;\nconst newScore = body.newScore || 0;\nconst improvement = body.improvement || (newScore - oldScore);\nconst tier = body.tier || 'Good';\nconst message = `\ud83c\udf89 CredIQ Score Improved!\n\nCongratulations! Your credit score just went up:\n\n\ud83d\udcc8 Previous Score: ${oldScore}/850\n\u2b50 New Score: ${newScore}/850\n\u2b06\ufe0f Improvement: +${improvement} points\n\ud83c\udff7\ufe0f Tier: ${tier}\n\nKeep up the great work! Consistent payments and low credit usage will help you reach the top tier.`;\nreturn [{ json: { ...body, message } }];"
+      },
+      "name": "Format Score Improvement",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "to": "whatsapp:+916238046005",
+        "from": "whatsapp:+14155238886",
+        "body": "={{ $json.message }}",
+        "toWhatsApp": true
+      },
+      "name": "WhatsApp: Score Improved",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "credentials": {
+        "twilioApi": {
+          "name": "Twilio account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{ \"status\": \"received\" }",
+        "options": {}
+      },
+      "name": "Respond to CredIQ6",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Webhook: Score Improved": {
+      "main": [[{ "node": "Format Score Improvement", "type": "main", "index": 0 }]]
+    },
+    "Format Score Improvement": {
+      "main": [[{ "node": "WhatsApp: Score Improved", "type": "main", "index": 0 }]]
+    },
+    "WhatsApp: Score Improved": {
+      "main": [[{ "node": "Respond to CredIQ6", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" }
+}

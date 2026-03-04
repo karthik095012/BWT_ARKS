@@ -215,36 +215,6 @@ export default function AutomationsPage() {
         </div>
       </div>
 
-      {/* Setup guide */}
-      <div className="card border border-primary/20 bg-primary-light">
-        <h3 className="font-semibold text-neutral-dark mb-3 flex items-center gap-2">
-          <Download className="w-4 h-4 text-primary" /> How to Set Up Automations
-        </h3>
-        <div className="space-y-2 text-sm text-neutral-gray mb-4">
-          <p>1. Start the automation engine: <code className="bg-neutral-dark text-green-400 px-2 py-0.5 rounded text-xs font-mono">docker-compose up -d n8n</code></p>
-          <p>2. Open <a href="http://localhost:5678" target="_blank" rel="noopener noreferrer" className="text-primary underline">localhost:5678</a> and login with <strong>admin / crediq2026</strong></p>
-          <p>3. Click <strong>+ New workflow → Import from file</strong></p>
-          <p>4. Upload the workflow files from the <code className="bg-neutral-dark text-green-400 px-2 py-0.5 rounded text-xs font-mono">n8n-workflows/</code> folder</p>
-          <p>5. Turn on the workflow — alerts will start working immediately</p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-          {[
-            { file: '01-score-calculated.json', label: 'Score Alert' },
-            { file: '02-scam-alert.json',       label: 'Scam Alert' },
-            { file: '03-loan-applied.json',      label: 'Loan Notify' },
-          ].map(({ file, label }) => (
-            <div key={file} className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 text-xs border border-primary/10">
-              <span>📄</span>
-              <div>
-                <p className="font-medium text-neutral-dark">{label}</p>
-                <p className="text-neutral-gray font-mono">{file}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* Event log */}
       <div>
         <div className="flex items-center justify-between mb-3">

@@ -12,7 +12,7 @@ import {
   signInWithEmail, signUpWithEmail, verifyEmailOTP,
   checkUsernameAvailable, saveUser, getUser, getEmailByUsername, isSupabaseConfigured,
 } from '@/services/supabase'
-import { cleanDisplayName } from '@/utils/helpers'
+import { cleanDisplayName, extractDisplayName } from '@/utils/helpers'
 import toast from 'react-hot-toast'
 import type { User } from '@/types'
 
@@ -92,7 +92,7 @@ export default function LoginPage() {
       const user: User = {
         uid,
         email,
-        name: (profile?.name as string) || cleanDisplayName(email),
+        name: (profile?.name as string) || extractDisplayName(email),
         username: profile?.username as string | undefined,
         createdAt: new Date(),
         lastLogin: new Date(),
