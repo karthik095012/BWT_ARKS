@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import { useAppStore } from '@/store/useAppStore'
 import {
   saveUser,
+  getUser,
   checkUsernameAvailable,
   sendEmailChangeOTP,
   verifyEmailChangeOTP,
@@ -17,6 +18,21 @@ type EmailStep = 'idle' | 'enterEmail' | 'enterOTP'
 export default function ProfilePage() {
   const navigate = useNavigate()
   const { user, setUser } = useAppStore()
+
+  // ── Load latest profile from DB on mount ─────────────────────────────────
+  useEffect(() => {
+    if (!user?.uid) return
+    getUser(user.uid).then((profile) => {
+      if (!profile) return
+      const dbName = (profile.name as string) || ''
+      const dbUsername = (profile.username as string) || ''
+      if (dbName) setName(dbName)
+      if (dbUsername) {
+        setUsername(dbUsername)
+        originalUsernameRef.current = dbUsername.toLowerCase()
+      }
+    }).catch(() => { /* ignore */ })
+  }, []) // eslint-disable-line
 
   // ── Name ──────────────────────────────────────────────────────────────────
   const [name, setName] = useState(user?.name || '')
@@ -41,6 +57,7 @@ export default function ProfilePage() {
 
   // ── Username ───────────────────────────────────────────────────────────────
   const [username, setUsername] = useState(user?.username || '')
+  const originalUsernameRef = useRef((user?.username || '').toLowerCase())
   const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>('idle')
   const [savingUsername, setSavingUsername] = useState(false)
   const unTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -48,7 +65,7 @@ export default function ProfilePage() {
   useEffect(() => {
     const val = username.trim().toLowerCase()
     if (val.length < 3) { setUsernameStatus('idle'); return }
-    if (val === user?.username?.toLowerCase()) { setUsernameStatus('idle'); return }
+    if (val === originalUsernameRef.current) { setUsernameStatus('idle'); return }
     setUsernameStatus('checking')
     if (unTimer.current) clearTimeout(unTimer.current)
     unTimer.current = setTimeout(async () => {
@@ -56,18 +73,19 @@ export default function ProfilePage() {
       setUsernameStatus(available ? 'available' : 'taken')
     }, 600)
     return () => { if (unTimer.current) clearTimeout(unTimer.current) }
-  }, [username, user?.username])
+  }, [username]) // eslint-disable-line
 
   const handleSaveUsername = async () => {
     const val = username.trim().toLowerCase()
     if (!val || val.length < 3) return toast.error('Username must be at least 3 characters')
     if (!user) return
     if (usernameStatus === 'taken') return toast.error('That username is already taken')
-    if (val === user.username?.toLowerCase()) return toast.error('That is already your username')
+    if (val === originalUsernameRef.current) return toast.error('That is already your username')
     setSavingUsername(true)
     try {
       await saveUser(user.uid, { username: val })
       setUser({ ...user, username: val })
+      originalUsernameRef.current = val
       setUsernameStatus('idle')
       toast.success('Username updated!')
     } catch {
