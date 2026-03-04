@@ -102,7 +102,7 @@ export default function Sidebar() {
             <NavLink
               key={path}
               to={path}
-              onClick={() => setSidebarOpen(false)}
+              onClick={() => { if (window.innerWidth < 768) setSidebarOpen(false) }}
               className={({ isActive }) =>
                 cn(
                   'nav-item',
