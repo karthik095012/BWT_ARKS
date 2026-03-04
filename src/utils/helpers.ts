@@ -7,14 +7,18 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 // Strip digits and trailing consonant-only initials from an email prefix or stored name.
-// e.g. "abhinandbs12" → "Abhinand", "karthikrn5" → "Karthik", "Abhinand" → "Abhinand"
+// e.g. "abhinandbs12" → "Abhinand", "Abhinand BS" → "Abhinand BS", "Abhinand" → "Abhinand"
 export function cleanDisplayName(raw: string): string {
-  // If already a clean name (no digits), just capitalise
-  if (!/\d/.test(raw)) {
-    return raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase()
+  // If it contains spaces it's a proper name — title-case each word and preserve
+  if (raw.includes(' ')) {
+    return raw.split(' ').map(w => w ? w.charAt(0).toUpperCase() + w.slice(1) : '').join(' ').trim()
   }
+  // If no digits, just capitalise first letter, preserve rest
+  if (!/\d/.test(raw)) {
+    return raw.charAt(0).toUpperCase() + raw.slice(1)
+  }
+  // Email prefix with digits — strip numbers then trailing consonant-only suffix
   const s = raw.replace(/\d+/g, '').toLowerCase()
-  // Strip trailing 2-char consonant-only suffix (initials like "bs", "rn", "jv")
   const last2 = s.slice(-2)
   const cleaned = /^[^aeiou]{2}$/i.test(last2) && s.length >= 6 ? s.slice(0, -2) : s
   return cleaned.charAt(0).toUpperCase() + cleaned.slice(1)

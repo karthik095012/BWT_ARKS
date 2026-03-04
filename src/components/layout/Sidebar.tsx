@@ -12,7 +12,21 @@ import {
   Workflow,
 } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
-import { cn, extractDisplayName } from '@/utils/helpers'
+import { cn, cleanDisplayName, extractDisplayName } from '@/utils/helpers'
+
+function getDisplayName(name?: string, email?: string): string {
+  if (name && !name.includes('@')) return cleanDisplayName(name)
+  if (name && name.includes('@')) return extractDisplayName(name)
+  if (email) return extractDisplayName(email)
+  return 'User'
+}
+
+function cleanInitials(name?: string, email?: string): string {
+  const display = getDisplayName(name, email)
+  const parts = display.trim().split(/\s+/)
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  return display[0]?.toUpperCase() || 'U'
+}
 
 const NAV_ITEMS = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -46,21 +60,20 @@ export default function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed top-0 left-0 h-full w-60 bg-white border-r border-neutral-border z-30',
-          'flex flex-col transition-transform duration-300',
+          'fixed top-0 left-0 h-full w-64 bg-white border-r border-neutral-border z-30',
+          'flex flex-col transition-transform duration-300 shadow-lg',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full',
-
         )}
       >
         {/* Logo */}
-        <div className="flex items-center justify-between px-4 py-5 border-b border-neutral-border">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-score-gradient flex items-center justify-center">
-              <TrendingUp className="w-4 h-4 text-white" />
+        <div className="flex items-center justify-between px-4 py-4 border-b border-neutral-border bg-gradient-to-r from-primary/5 to-transparent">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-score-gradient flex items-center justify-center shadow-sm">
+              <TrendingUp className="w-5 h-5 text-white" />
             </div>
             <div>
-              <div className="font-bold text-neutral-dark text-lg leading-none">CredIQ</div>
-              <div className="text-xs text-neutral-gray">AI Finance Platform</div>
+              <div className="font-bold text-neutral-dark text-lg leading-none tracking-tight">CredIQ</div>
+              <div className="text-xs text-primary font-medium">AI Finance Platform</div>
             </div>
           </div>
           {/* Mobile close */}
@@ -82,16 +95,22 @@ export default function Sidebar() {
 
         {/* Score pill */}
         {credScore && (
-          <div className="mx-4 mt-4 px-3 py-2.5 rounded-lg bg-primary-light border border-primary/20">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-primary-dark font-medium">Your CredScore</span>
-              <span className="font-mono font-bold text-primary text-lg">{credScore.score}</span>
+          <div className="mx-3 mt-3 px-3 py-2.5 rounded-xl bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs text-primary-dark font-semibold">CredScore</span>
+              <div className="flex items-center gap-1">
+                <span className="font-mono font-bold text-primary text-base">{credScore.score}</span>
+                <span className="text-xs text-neutral-gray">/850</span>
+              </div>
             </div>
-            <div className="w-full h-1.5 rounded-full bg-primary/20 mt-1.5">
+            <div className="w-full h-1.5 rounded-full bg-primary/20">
               <div
                 className="h-full rounded-full bg-primary transition-all duration-1000"
                 style={{ width: `${((credScore.score - 300) / 550) * 100}%` }}
               />
+            </div>
+            <div className="text-right mt-1">
+              <span className="text-xs text-primary font-medium">{credScore.tier}</span>
             </div>
           </div>
         )}
@@ -117,9 +136,11 @@ export default function Sidebar() {
         </nav>
 
         {/* Ollama status */}
-        <div className="mx-4 mb-3 px-3 py-2 rounded-lg bg-neutral-light border border-neutral-border">
+        <div className="mx-3 mb-2 px-3 py-2 rounded-xl bg-neutral-light border border-neutral-border">
           <div className="flex items-center gap-2">
-            <Bot className="w-4 h-4 text-purple-600 shrink-0" />
+            <div className={cn('w-7 h-7 rounded-lg flex items-center justify-center shrink-0', ollamaConnected ? 'bg-purple-100' : 'bg-neutral-200')}>
+              <Bot className={cn('w-4 h-4', ollamaConnected ? 'text-purple-600' : 'text-neutral-gray')} />
+            </div>
             <div className="min-w-0">
               <div className="text-xs font-medium text-neutral-dark truncate">
                 {ollamaModel || 'qwen2.5-coder:7b'}
@@ -140,21 +161,21 @@ export default function Sidebar() {
         </div>
 
         {/* User + logout */}
-        <div className="border-t border-neutral-border px-4 py-3">
+        <div className="border-t border-neutral-border px-3 py-3 bg-neutral-light/50">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-score-gradient flex items-center justify-center text-white font-bold text-sm shrink-0">
-              {(user?.name?.includes('@') ? extractDisplayName(user.name) : user?.name)?.[0]?.toUpperCase() || 'U'}
+            <div className="w-10 h-10 rounded-full bg-score-gradient flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm">
+              {cleanInitials(user?.name, user?.email)}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-neutral-dark truncate">
-                {user?.name?.includes('@') ? extractDisplayName(user.name) : (user?.name || extractDisplayName(user?.email || 'user'))}
+              <div className="text-sm font-semibold text-neutral-dark truncate">
+                {getDisplayName(user?.name, user?.email)}
               </div>
               <div className="text-xs text-neutral-gray truncate">{user?.email || user?.phone || ''}</div>
             </div>
             <button
               onClick={handleLogout}
               title="Logout"
-              className="p-1.5 rounded-md text-neutral-gray hover:text-danger hover:bg-danger-light transition-colors"
+              className="p-1.5 rounded-lg text-neutral-gray hover:text-danger hover:bg-danger-light transition-colors"
             >
               <LogOut className="w-4 h-4" />
             </button>
