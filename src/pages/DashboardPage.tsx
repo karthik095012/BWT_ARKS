@@ -105,7 +105,7 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-neutral-dark">
-            Welcome back, {user?.name ? cleanDisplayName(user.name) : 'there'} 👋
+            Welcome back, {user?.name ? cleanDisplayName(user.name) : 'there'} 
           </h2>
           <p className="text-sm text-neutral-gray mt-0.5">
             {transactions.length} transactions loaded ·{' '}

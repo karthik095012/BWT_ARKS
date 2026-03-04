@@ -100,6 +100,22 @@ const RULES: Rule[] = [
 
   // Job scams
   { pattern: /\b(work.?from.?home|part[\s-]?time.?job|earn.{0,15}per.?day).{0,30}(register|pay|fee|deposit)\b/i, flag: 'Fake job with upfront fee', weight: 35, scamType: 'job_fraud' },
+
+  // Bank/official asking to pay fee or charges
+  { pattern: /\b(bank|official|executive|representative).{0,40}(pay|send|transfer|charge|fee|amount)\b/i,       flag: 'Bank/official demanding payment', weight: 40, scamType: 'fake_bank_call' },
+  { pattern: /\b(pay|send|transfer).{0,30}(charge|fee|fine|penalty|processing|convenience|service).{0,20}(bank|account|upi|portal)\b/i, flag: 'Fake bank service charge demand', weight: 45, scamType: 'fake_bank_call' },
+  { pattern: /\b(charge|charges|fee|deduct).{0,20}(₹|rs\.?|inr|\d{3,})\b/i,                                 flag: 'Suspicious fee/charge demand',    weight: 30, scamType: 'fake_bank_call' },
+  { pattern: /\bfrom.{0,10}(bank|rbi|sbi|hdfc|icici|axis|npci|government|ministry|department)\b/i,             flag: 'Impersonating official institution', weight: 25, scamType: 'fake_bank_call' },
+
+  // Fake/impersonated UPI IDs
+  { pattern: /^(sbi|hdfc|icici|axis|rbi|npci|paytm|phonepe|googlepay|bhim)[._-]/i,                              flag: 'UPI ID impersonating official entity', weight: 40, scamType: 'upi_phishing' },
+  { pattern: /(sbi|hdfc|icici|axis|rbi|npci)\.(official|bank|help|care|customer|support)@/i,                   flag: 'Official-sounding fake UPI ID',        weight: 45, scamType: 'upi_phishing' },
+
+  // Remote access / screen share
+  { pattern: /\b(anydesk|teamviewer|remote|screen.?share|screen.?control|remote.?access)\b/i,                  flag: 'Remote access tool mentioned',  weight: 50, scamType: 'upi_phishing' },
+
+  // "Pay first to receive" pattern
+  { pattern: /\b(pay|send|transfer|deposit).{0,20}(first|advance|upfront|before).{0,30}(receive|get|claim|release|unlock)\b/i, flag: 'Pay-first-to-receive scam', weight: 45, scamType: 'lottery_scam' },
 ]
 
 export function runPatternRules(input: string, context: string): { score: number; flags: RedFlag[]; topScamType: string | undefined } {
@@ -251,7 +267,7 @@ export async function runScamAnalysis(
   const t3 = Date.now()
   let aiData
   try {
-    aiData = await analyzeScamRisk(input, context || 'No additional context provided')
+    aiData = await analyzeScamRisk(input, context || 'No additional context provided', flags)
   } catch {
     aiData = {
       isScam: combinedScore > 50,
